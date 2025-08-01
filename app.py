@@ -1,8 +1,11 @@
+import socket
+import time
+import random
+import multiprocessing
+import os
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 from datetime import datetime, timedelta
-import socket
-import random
 from typing import List
 from pydantic import BaseModel
 
@@ -13,6 +16,16 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc"
 )
+
+def worker(quit_event: multiprocessing.Event):
+    """
+    Esta é a função que será executada em cada processo filho.
+    Ela entra em um loop infinito ('busy-wait') que consome 100% de um núcleo da CPU.
+    O loop continua até que o 'quit_event' seja sinalizado pelo processo principal.
+    """
+    while not quit_event.is_set():
+        # A instrução 'pass' aqui cria um loop apertado que consome CPU.
+        pass
 
 start_time = datetime.now()
 
@@ -140,3 +153,67 @@ def healthtime():
         return {"status": "healthy"}
     else:
         raise HTTPException(status_code=500, detail="Erro no Servidor")
+    
+@app.get(
+    "/cpu/{duration_seconds}",
+    tags=["Performance"],
+    summary="Stress test de CPU",
+    description="Endpoint que executa stress test em todos os núcleos da CPU pelo tempo especificado em segundos",
+    response_description="Status do teste de stress da CPU"
+)
+async def cpu_on_fire(duration_seconds: int):
+    """Endpoint que executa stress test intensivo da CPU.
+    
+    Args:
+        duration_seconds: Duração em segundos para executar o stress test
+    
+    Comportamento:
+    - Cria um processo worker para cada núcleo da CPU disponível
+    - Cada processo executa um loop infinito consumindo 100% do núcleo
+    - Executa pelo tempo especificado no parâmetro duration_seconds
+    - Finaliza todos os processos e retorna status 'On Fire'
+    
+    Atenção: Este endpoint pode causar alta utilização de CPU no servidor!
+    """
+    # 1. Obter o número de núcleos de CPU disponíveis no sistema.
+    # Equivalente a `runtime.NumCPU()` em Go.
+    cpu_cores = os.cpu_count()
+    if cpu_cores is None:
+        return JSONResponse(status_code=500, content={"error": "Não foi possível determinar o número de núcleos da CPU."})
+
+    print(f"Iniciando stress test em {cpu_cores} núcleo(s) da CPU...")
+
+    # 2. Criar um objeto de Evento.
+    # Este evento será usado para sinalizar aos processos 'worker' que eles devem parar.
+    # É o equivalente ao `chan bool` em Go.
+    quit_event = multiprocessing.Event()
+
+    processes = []
+    # 3. Iniciar um processo 'worker' para cada núcleo da CPU.
+    # Equivalente ao loop `go func() {}` em Go.
+    for i in range(cpu_cores):
+        process = multiprocessing.Process(target=worker, args=(quit_event,))
+        processes.append(process)
+        process.start()
+        print(f"Processo worker {i+1} iniciado no PID {process.pid}")
+
+    # 4. Esperar por 3 segundos enquanto os processos 'worker' consomem a CPU.
+    # Equivalente a `time.Sleep(3 * time.Second)` em Go.
+    time.sleep(duration_seconds)
+
+    # 5. Sinalizar para todos os processos pararem.
+    # Define o evento, o que fará com que a condição `while` nos workers se torne falsa.
+    # Equivalente a enviar para o canal `quit <- true`.
+    print("Enviando sinal para parar os processos workers...")
+    quit_event.set()
+
+    # 6. Esperar que todos os processos terminem.
+    # Isso garante que a função só retorne depois que os workers forem encerrados.
+    for process in processes:
+        process.join()
+
+    print("Stress test concluído.")
+
+    # 7. Retornar a resposta JSON.
+    # Equivalente a `c.JSON(http.StatusOK, gin.H{"status": "On Fire"})`.
+    return {"status": "On Fire"}
