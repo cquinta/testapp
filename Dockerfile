@@ -1,4 +1,3 @@
-# Utiliza uma imagem base do Python 3.9 slim
 FROM  cgr.dev/chainguard/python:latest-dev AS dev  
 
 # Define o diretório de trabalho no contêiner

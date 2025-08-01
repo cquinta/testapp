@@ -1,3 +1,5 @@
 fastapi
 datetime
 uvicorn
+typing
+pydantic
