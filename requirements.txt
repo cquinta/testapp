@@ -3,3 +3,4 @@ datetime
 uvicorn
 typing
 pydantic
+psutil
