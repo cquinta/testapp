@@ -4,8 +4,8 @@ import random
 import multiprocessing
 import os
 import psutil
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, HTTPException, status
+from fastapi.responses import JSONResponse, Response
 from datetime import datetime, timedelta
 from typing import List
 from pydantic import BaseModel
@@ -156,7 +156,11 @@ def healthtime():
         raise HTTPException(status_code=500, detail="Erro no Servidor")
 
 def get_memory_usage_mb():
-    """Retorna o uso de memória atual do processo em MB."""
+    """Retorna o uso de memória atual do processo em MB.
+    
+    Returns:
+        float: Uso de memória em megabytes
+    """
     process = psutil.Process()
     return process.memory_info().rss / (1024 * 1024)
     
@@ -224,10 +228,45 @@ async def cpu_on_fire(duration_seconds: int):
     # Equivalente a `c.JSON(http.StatusOK, gin.H{"status": "On Fire"})`.
     return {"status": "On Fire"}
 
-@app.get("/mem/{duration_seconds}", tags=["Simulação"])
-async def mem(duration_seconds: int):
+@app.get(
+    "/version",
+    tags=["Info"],
+    summary="Obter versão",
+    description="Retorna a versão da aplicação através da variável de ambiente VERSION",
+    response_description="Versão da aplicação ou erro se não definida"
+)
+def get_version():
+    """Endpoint que retorna a versão da aplicação.
+    
+    Retorna:
+    - 200: Versão da aplicação se a variável VERSION estiver definida
+    - 404: Erro se a variável de ambiente VERSION não estiver definida
     """
-    Um endpoint que consome CPU e memória intensivamente por uma duração específica.
+    version = os.getenv("VERSION")
+    if version is None:
+        return Response(content="Variável de ambiente 'VERSION' não encontrada.", status_code=status.HTTP_404_NOT_FOUND)
+    return {"version": version}
+
+@app.get(
+    "/mem/{duration_seconds}",
+    tags=["Performance"],
+    summary="Stress test de memória",
+    description="Endpoint que consome CPU e memória intensivamente pelo tempo especificado em segundos",
+    response_description="Status do teste de stress de memória com métricas detalhadas"
+)
+async def mem(duration_seconds: int):
+    """Endpoint que executa stress test intensivo de CPU e memória.
+    
+    Args:
+        duration_seconds: Duração em segundos para executar o stress test
+    
+    Comportamento:
+    - Monitora uso de memória antes e depois do teste
+    - Cria uma lista crescente para consumir memória
+    - Executa loop intensivo para consumir CPU
+    - Retorna métricas detalhadas do consumo de recursos
+    
+    Atenção: Este endpoint pode causar alta utilização de CPU e memória!
     """
     mem_before = get_memory_usage_mb()
     print(f"Iniciando operação de consumo de recursos por {duration_seconds} segundo(s)...")

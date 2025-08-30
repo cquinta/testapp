@@ -54,6 +54,7 @@ A documentação interativa está disponível em:
 
 ### Info
 - `GET /` - Retorna o hostname do servidor
+- `GET /version` - Retorna a versão da aplicação (variável VERSION)
 
 ### Health
 - `GET /healthcheck` - Healthcheck básico (sempre retorna 200)
@@ -66,6 +67,7 @@ A documentação interativa está disponível em:
 
 ### Performance
 - `GET /cpu/{duration_seconds}` - Executa stress test de CPU pelo tempo especificado
+- `GET /mem/{duration_seconds}` - Executa stress test de memória e CPU pelo tempo especificado
 
 ## 💡 Exemplos de Uso
 
@@ -95,10 +97,25 @@ curl http://localhost:8000/
 # Resposta: {"hostname": "nome-do-servidor"}
 ```
 
+### Obter versão
+```bash
+export VERSION="1.0.0"
+curl http://localhost:8000/version
+# Resposta: {"version": "1.0.0"}
+```
+
+### Stress test de memória
+```bash
+curl http://localhost:8000/mem/3
+# Executa stress test de memória por 3 segundos
+# Resposta: {"status": "On Fire", "memory_allocated_mb": 45.2, ...}
+```
+
 ## ⚠️ Avisos Importantes
 
-- O endpoint `/cpu/{duration_seconds}` pode causar alta utilização de CPU
+- Os endpoints `/cpu/{duration_seconds}` e `/mem/{duration_seconds}` podem causar alta utilização de recursos
 - O endpoint `/healthtime` muda comportamento após 60 segundos de execução
+- O endpoint `/version` requer a variável de ambiente VERSION definida
 - Use os endpoints de fault injection para simular falhas em testes
 
 ## 🛠️ Desenvolvimento
@@ -116,6 +133,7 @@ testapp/
 - **FastAPI**: Framework web moderno e rápido
 - **Uvicorn**: Servidor ASGI
 - **Pydantic**: Validação de dados
+- **psutil**: Monitoramento de recursos do sistema
 
 ## 📊 Monitoramento
 
@@ -129,11 +147,36 @@ curl -f http://localhost:8000/healthcheck || echo "Aplicação com problemas"
 timeout 5 curl http://localhost:8000/healthcheck
 ```
 
-## 🐳 Deploy
+## 🐳 Docker
+
+### Sobre o Dockerfile
+
+O projeto utiliza um **multi-stage build** para otimizar a imagem Docker:
+
+1. **Stage Development**: Usa `cgr.dev/chainguard/python:latest-dev` para instalar dependências
+2. **Stage Production**: Usa `cgr.dev/chainguard/python:latest` (mais leve) para a imagem final
+
+**Benefícios:**
+- Imagem final menor (sem ferramentas de desenvolvimento)
+- Maior segurança (imagens Chainguard são distroless)
+- Ambiente virtual isolado para dependências
+
+### Build e Execução
+
+```bash
+# Build da imagem
+docker build -t testapp .
+
+# Execução com variáveis de ambiente
+docker run -p 8000:8000 -e VERSION="1.0.0" testapp
+```
+
+## 🚀 Deploy
 
 ### Variáveis de Ambiente
 - `PORT`: Porta da aplicação (padrão: 8000)
 - `HOST`: Host da aplicação (padrão: 0.0.0.0)
+- `VERSION`: Versão da aplicação (opcional, usado pelo endpoint /version)
 
 ### Exemplo de deploy
 ```bash
@@ -146,4 +189,4 @@ docker run -p 8000:8000 -e PORT=8000 testapp
 
 ## 📝 Licença
 
-Este projeto é apenas para fins de teste e demonstração.
+Este projeto é apenas para fins de teste e demonstração pode ser reproduzido sem problemas mas não deve ser utilizado em produção. 

@@ -45,7 +45,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: cquinta/moc-app:${{ env.BRANCH_NAME }}
+          tags: cquinta/test-app:${{ env.BRANCH_NAME }}
           # Opcional: Adiciona cache para acelerar builds futuros
           cache-from: type=registry,ref=cquinta/moc-app:buildcache
           cache-to: type=registry,ref=cquinta/moc-app:buildcache,mode=max
