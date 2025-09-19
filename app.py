@@ -6,6 +6,7 @@ import os
 import psutil
 from fastapi import FastAPI, HTTPException, status
 from fastapi.responses import JSONResponse, Response
+from prometheus_fastapi_instrumentator import Instrumentator
 from datetime import datetime, timedelta
 from typing import List
 from pydantic import BaseModel
@@ -42,12 +43,13 @@ class Healthcheck(BaseModel):
     description="Retorna o hostname do servidor onde a aplicação está executando",
     response_description="Hostname do servidor"
 )
+
 def read_root():
     """Endpoint raiz que retorna informações básicas do servidor."""
     hostname = socket.gethostname()
     return {"hostname": hostname}
 
-
+Instrumentator().instrument(app).expose(app)
 @app.get(
     "/healthcheck",
     tags=["Health"],

@@ -4,3 +4,4 @@ uvicorn
 typing
 pydantic
 psutil
+prometheus_fastapi_instrumentator
