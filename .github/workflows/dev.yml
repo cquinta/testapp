@@ -39,13 +39,13 @@ jobs:
 
         
     # 5. Constrói a imagem Docker e a envia para o Docker Hub
-      # A tag da imagem será no formato: cquinta/test-app:<nome-da-branch>
+      # A tag da imagem será no formato: cquinta/moc-app:<nome-da-branch>
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          tags: cquinta/test-app:${{ env.BRANCH_NAME }}
+          tags: cquinta/moc-app:${{ env.BRANCH_NAME }}
           # Opcional: Adiciona cache para acelerar builds futuros
-          cache-from: type=registry,ref=cquinta/test-app:buildcache
-          cache-to: type=registry,ref=cquinta/test-app:buildcache,mode=max
+          cache-from: type=registry,ref=cquinta/moc-app:buildcache
+          cache-to: type=registry,ref=cquinta/moc-app:buildcache,mode=max
