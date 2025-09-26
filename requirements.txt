@@ -5,3 +5,5 @@ typing
 pydantic
 psutil
 prometheus_fastapi_instrumentator
+boto3
+python-dotenv

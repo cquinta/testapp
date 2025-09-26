@@ -1,6 +1,8 @@
 import socket
 import time
 import random
+import json
+import logging
 import multiprocessing
 import os
 import psutil
@@ -9,7 +11,38 @@ from fastapi.responses import JSONResponse, Response
 from prometheus_fastapi_instrumentator import Instrumentator
 from datetime import datetime, timedelta
 from typing import List
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from botocore.exceptions import ClientError
+import boto3
+from dotenv import load_dotenv
+
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+load_dotenv()
+
+try:
+    aws_region = os.getenv("AWS_REGION")
+    sqs_queue_url = os.getenv("SQS_QUEUE_URL")
+
+
+    sqs_client = boto3.client(
+        "sqs",
+        region_name=aws_region,
+        
+    )
+    logging.info(f"Conectado à AWS SQS na região: {aws_region}")
+
+except (ValueError, ClientError) as e:
+    logging.error(f"Erro ao inicializar o cliente SQS: {e}")
+    sqs_client = None # Define como None para que a app possa iniciar e reportar o erro
+
+
+class MessagePayload(BaseModel):
+    """
+    Modelo para o corpo da mensagem. Permite uma estrutura flexível com um dicionário.
+    """
+    message_type: str = Field(..., example="user_signup", description="Tipo da mensagem para roteamento.")
+    data: dict = Field(..., example={"user_id": 123, "username": "joao.silva"}, description="Dados da mensagem.")
 
 app = FastAPI(
     title="Test Application API",
@@ -299,3 +332,59 @@ async def mem(duration_seconds: int):
         "items_created_in_list": len(s),
         "memory_allocated_mb": round(mem_after - mem_before, 2)
     }
+
+@app.post("/send-message", status_code=status.HTTP_202_ACCEPTED, tags=["SQS"])
+async def send_message_to_sqs(payload: MessagePayload):
+    """
+    Recebe um payload JSON e o envia como uma mensagem para a fila SQS.
+    """
+    if not sqs_client:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Serviço SQS não está configurado ou disponível."
+        )
+
+    logging.info(f"Recebida requisição para enviar mensagem do tipo: {payload.message_type}")
+
+    try:
+        # O corpo da mensagem SQS deve ser uma string.
+        # Convertemos nosso payload Pydantic para um dicionário e depois para uma string JSON.
+        message_body = payload.model_dump_json()
+
+        # Enviando a mensagem para a fila SQS
+        response = sqs_client.send_message(
+            QueueUrl=sqs_queue_url,
+            MessageBody=message_body,
+            # MessageAttributes é útil para filtrar mensagens sem precisar ler o corpo
+            MessageAttributes={
+                'MessageType': {
+                    'DataType': 'String',
+                    'StringValue': payload.message_type
+                }
+            }
+        )
+
+        message_id = response.get('MessageId')
+        logging.info(f"Mensagem enviada com sucesso para SQS. MessageId: {message_id}")
+
+        return {
+            "status": "success",
+            "message": "Mensagem aceita na fila.",
+            "message_id": message_id
+        }
+
+    except ClientError as e:
+        # Tratamento de erros específicos do boto3
+        error_code = e.response.get("Error", {}).get("Code")
+        logging.error(f"Erro do cliente AWS ao enviar para SQS (Código: {error_code}): {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao se comunicar com o SQS: {error_code}"
+        )
+    except Exception as e:
+        # Tratamento de outros erros inesperados
+        logging.error(f"Um erro inesperado ocorreu: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Ocorreu um erro interno no servidor."
+        )
