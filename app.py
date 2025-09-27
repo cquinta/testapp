@@ -61,6 +61,7 @@ def worker(quit_event: multiprocessing.Event):
     while not quit_event.is_set():
         # A instrução 'pass' aqui cria um loop apertado que consome CPU.
         pass
+        time.sleep(0.6)
 
 start_time = datetime.now()
 
