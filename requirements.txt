@@ -1,8 +1,9 @@
 fastapi
-datetime
 uvicorn
-typing
 pydantic
+psutil
+boto3
+prometheus_fastapi_instrumentator
 psutil
 prometheus_fastapi_instrumentator
 boto3

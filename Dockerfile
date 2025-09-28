@@ -44,7 +44,7 @@ WORKDIR /app
 ENV PATH="/app/venv/bin:$PATH"
 
 # Copia o código da aplicação
-COPY app.py app.py
+COPY app/ app/
 
 # Copia o ambiente virtual com dependências instaladas do stage anterior
 COPY --from=dev /app/venv /app/venv
@@ -54,7 +54,7 @@ EXPOSE 8000
 
 # Define o comando de inicialização da aplicação
 # uvicorn: Servidor ASGI para FastAPI
-# app:app: Módulo 'app' e instância 'app' do FastAPI
+# app.main:app: Módulo 'app.main' e instância 'app' do FastAPI
 # --host 0.0.0.0: Aceita conexões de qualquer IP
 # --port 8000: Porta de escuta
-ENTRYPOINT ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
+ENTRYPOINT ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
