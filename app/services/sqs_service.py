@@ -41,7 +41,7 @@ def receive_and_delete_message_from_sqs() -> dict:
         RuntimeError: Se houver erro ao receber/deletar a mensagem
     """
     try:
-        sqs = boto3.client('sqs')
+        sqs = boto3.client('sqs', region_name='us-east-1')
         queue_url = get_sqs_queue_url()
         
         # Receber mensagem da fila
