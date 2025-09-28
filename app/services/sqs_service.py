@@ -16,7 +16,7 @@ def send_message_to_sqs(message: str) -> str:
         RuntimeError: Se houver erro ao enviar a mensagem
     """
     try:
-        sqs = boto3.client('sqs')
+        sqs = boto3.client('sqs', region_name='us-east-1')
         queue_url = get_sqs_queue_url()
         
         response = sqs.send_message(
